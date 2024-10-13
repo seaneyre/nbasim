@@ -70,10 +70,18 @@ func (s *Simulation) Run() error {
 	}
 
 	log.Info().Msg("Starting game")
-	// for _, event := range events {
-		
-	// 	event.GameClockTime
-	// } 
+	for i, event := range events {
+		log.Info().Msgf("Processing event %d/%d", i, len(events))
+		log.Info().Msgf("The simulated clock time is currently %d.  The event will happen at %d", s.simulated_game_clock_time, event.GameClockTime)
+		for s.simulated_game_clock_time != event.GameClockTime {
+			seconds_until_event := event.GameClockTime - s.simulated_game_clock_time
+			log.Info().Msgf("%d seconds until event happens", seconds_until_event)
+			time.Sleep(time.Duration(int(time.Second) * seconds_until_event))
+			s.simulated_game_clock_time += seconds_until_event
+			log.Printf("Sleep finished s.simulated_game_clock_time=%d", s.simulated_game_clock_time)
+		}
+		log.Info().Msg("*Event Happens*")
+	}
 
 
 	return nil
