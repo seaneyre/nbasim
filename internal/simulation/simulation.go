@@ -21,10 +21,10 @@ type Simulation struct {
 	simulated_game_clock_time int
 }
 
-func New(nbaGameID string, realStartTime time.Time) *Simulation {
+func New(nbaGameID string, timeFactor float64, realStartTime time.Time) *Simulation {
 	return &Simulation{
 		nba_game_id: nbaGameID,
-		time_factor: 1.0,
+		time_factor: timeFactor,
 		real_start_time: realStartTime,
 		simulated_game_clock_time: 0,
 	}
@@ -74,10 +74,10 @@ func (s *Simulation) Run() error {
 		log.Info().Msgf("Processing event %d/%d", i, len(events))
 		log.Info().Msgf("The simulated clock time is currently %d.  The event will happen at %d", s.simulated_game_clock_time, event.GameClockTime)
 		for s.simulated_game_clock_time != event.GameClockTime {
-			seconds_until_event := event.GameClockTime - s.simulated_game_clock_time
-			log.Info().Msgf("%d seconds until event happens", seconds_until_event)
-			time.Sleep(time.Duration(int(time.Second) * seconds_until_event))
-			s.simulated_game_clock_time += seconds_until_event
+			game_seconds_until_event := event.GameClockTime - s.simulated_game_clock_time
+			log.Info().Msgf("%d seconds until event happens", game_seconds_until_event)
+			time.Sleep(time.Duration(int(time.Second) * (game_seconds_until_event / int(s.time_factor))))
+			s.simulated_game_clock_time += game_seconds_until_event
 			log.Printf("Sleep finished s.simulated_game_clock_time=%d", s.simulated_game_clock_time)
 		}
 		log.Info().Msg("*Event Happens*")
