@@ -15,6 +15,7 @@ func main() {
 }
 
 func run() error {
-	sim := simulation.New()
+	nba_game_id := 100 //TODO: make this a flag which defaults to a random game
+	sim := simulation.New(nba_game_id)
 	return sim.Run()
 }
