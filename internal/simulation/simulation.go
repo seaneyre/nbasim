@@ -1,9 +1,12 @@
 package simulation
 
 import (
-	"fmt"
+	_ "fmt"
+	"os"
 
 	"github.com/seaneyre/nbasim/internal/retrieve"
+	"github.com/rs/zerolog"
+    "github.com/rs/zerolog/log"
 	"encoding/json"
 	"strconv"
 )
@@ -21,21 +24,25 @@ func New(nbaGameID string) *Simulation {
 }
 
 func (s *Simulation) Run() error {
-	fmt.Println("Running simulation")
-	fmt.Printf("NBA Game ID: %s\n", s.nba_game_id)
-	fmt.Printf("Time factor: %f\n", s.time_factor)
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
+	log.Print("hello world")
+
+	log.Print("Running simulation")
+	log.Printf("NBA Game ID: %s", s.nba_game_id)
+	log.Printf("Time factor: %f", s.time_factor)
 	
-	
+
 	resp, err := retrieve.GetPlayByPlayResponse(s.nba_game_id)
 	if err != nil {
 		return err
 	}
 
 	str, _ := json.MarshalIndent(resp.Game.Actions[0], "", "  ")
-	fmt.Println(string(str))
+	log.Print(string(str))
 
 	events := PrepareEvents(resp)
-	fmt.Println(events[0])
+	log.Print(events[0])
 
 	return nil
 }
@@ -45,9 +52,9 @@ func PrepareEvents(resp retrieve.PlayByPlayResponse) []Event {
 	for _, action := range resp.Game.Actions {
 		game_clock_time, err := GetGameClockTime(action.Clock, action.Period)
 		if err != nil {
-			fmt.Printf("Error getting Game Clock Time from clock=%s; period=%d", action.Clock, action.Period)
+			log.Printf("Error getting Game Clock Time from clock=%s; period=%d", action.Clock, action.Period)
 		}
-		// fmt.Printf("clock=%s; period=%d; game_clock_time=%d\n", action.Clock, action.Period, game_clock_time)
+		// log.Printf("clock=%s; period=%d; game_clock_time=%d\n", action.Clock, action.Period, game_clock_time)
 
 		event := Event{
 			GameClockTime: game_clock_time,
