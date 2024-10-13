@@ -1,33 +1,50 @@
 package simulation
 
 import (
-	_ "fmt"
+	"encoding/json"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	_ "encoding/json"
 	"strconv"
 
+	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/seaneyre/nbasim/internal/retrieve"
 )
 
 type Simulation struct {
-	nba_game_id string
-	time_factor float64
-	real_start_time time.Time
+	nba_game_id              string
+	time_factor              float64
+	real_start_time          time.Time
 	simulated_game_clock_time int
+	connections              map[*websocket.Conn]bool
+	connectionsMutex         sync.Mutex
 }
 
 func New(nbaGameID string, timeFactor float64, realStartTime time.Time) *Simulation {
 	return &Simulation{
-		nba_game_id: nbaGameID,
-		time_factor: timeFactor,
-		real_start_time: realStartTime,
+		nba_game_id:              nbaGameID,
+		time_factor:              timeFactor,
+		real_start_time:          realStartTime,
 		simulated_game_clock_time: 0,
+		connections:              make(map[*websocket.Conn]bool),
 	}
+}
+
+func (s *Simulation) AddConnection(conn *websocket.Conn) {
+	s.connectionsMutex.Lock()
+	defer s.connectionsMutex.Unlock()
+	s.connections[conn] = true
+}
+
+func (s *Simulation) RemoveConnection(conn *websocket.Conn) {
+	s.connectionsMutex.Lock()
+	defer s.connectionsMutex.Unlock()
+	delete(s.connections, conn)
 }
 
 func (s *Simulation) Run() error {
@@ -72,7 +89,7 @@ func (s *Simulation) Run() error {
 	log.Info().Msg("Starting game")
 	for i, event := range events {
 		log.Info().Msgf("Processing event %d/%d", i, len(events))
-		log.Info().Msgf("The simulated clock time is currently %d.  The event will happen at %d", s.simulated_game_clock_time, event.GameClockTime)
+		log.Info().Msgf("The simulated clock time is currently %d. The event will happen at %d", s.simulated_game_clock_time, event.GameClockTime)
 		for s.simulated_game_clock_time != event.GameClockTime {
 			game_seconds_until_event := event.GameClockTime - s.simulated_game_clock_time
 			log.Info().Msgf("%d seconds until event happens", game_seconds_until_event)
@@ -81,10 +98,30 @@ func (s *Simulation) Run() error {
 			log.Printf("Sleep finished s.simulated_game_clock_time=%d", s.simulated_game_clock_time)
 		}
 		log.Info().Msg("*Event Happens*")
+		
+		s.sendEventToAllConnections(event)
+	}
+	log.Info().Msg("Game finished")
+	return nil
+}
+
+func (s *Simulation) sendEventToAllConnections(event Event) {
+	eventJSON, err := json.Marshal(event)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to marshal event")
+		return
 	}
 
+	s.connectionsMutex.Lock()
+	defer s.connectionsMutex.Unlock()
 
-	return nil
+	for conn := range s.connections {
+		err = conn.WriteMessage(websocket.TextMessage, eventJSON)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to send message through WebSocket")
+			delete(s.connections, conn)
+		}
+	}
 }
 
 func PrepareEvents(resp retrieve.PlayByPlayResponse) []Event {
