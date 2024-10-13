@@ -16,12 +16,14 @@ import (
 type Simulation struct {
 	nba_game_id string
 	time_factor float64
+	real_start_time time.Time
 }
 
-func New(nbaGameID string) *Simulation {
+func New(nbaGameID string, realStartTime time.Time) *Simulation {
 	return &Simulation{
 		nba_game_id: nbaGameID,
 		time_factor: 1.0,
+		real_start_time: realStartTime,
 	}
 }
 
@@ -33,8 +35,9 @@ func (s *Simulation) Run() error {
 	log.Print("Running simulation")
 	log.Printf("NBA Game ID: %s", s.nba_game_id)
 	log.Printf("Time factor: %f", s.time_factor)
+	log.Printf("Real Start Time: %s", s.real_start_time.Format(time.RFC3339))
 	
-
+	log.Info().Msg("Getting Play-By-Play data from NBA API")
 	resp, err := retrieve.GetPlayByPlayResponse(s.nba_game_id)
 	if err != nil {
 		return err
@@ -43,8 +46,9 @@ func (s *Simulation) Run() error {
 	str, _ := json.MarshalIndent(resp.Game.Actions[0], "", "  ")
 	log.Print(string(str))
 
+	log.Info().Msg("Preparing list of events from Play-By-Play response")
 	events := PrepareEvents(resp)
-	log.Print(events[0])
+	log.Info().Msgf("%d events prepared", len(events))
 
 	return nil
 }

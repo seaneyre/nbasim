@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/seaneyre/nbasim/internal/simulation"
 )
@@ -16,6 +17,6 @@ func main() {
 
 func run() error {
 	nba_game_id := "0022000180" //TODO: make this a flag which defaults to a random game
-	sim := simulation.New(nba_game_id)
+	sim := simulation.New(nba_game_id, time.Now().Add(time.Minute))
 	return sim.Run()
 }
