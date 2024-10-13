@@ -67,8 +67,8 @@ type PlayByPlayResponse struct {
 		Time    string `json:"time"`
 	} `json:"meta"`
 	Game struct {
-		GameID  string `json:"gameId"`
-		Actions []Action  `json:"actions"`
+		GameID  string   `json:"gameId"`
+		Actions []Action `json:"actions"`
 	} `json:"game"`
 }
 

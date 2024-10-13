@@ -17,21 +17,21 @@ import (
 )
 
 type Simulation struct {
-	nba_game_id              string
-	time_factor              float64
-	real_start_time          time.Time
+	nba_game_id               string
+	time_factor               float64
+	real_start_time           time.Time
 	simulated_game_clock_time int
-	connections              map[*websocket.Conn]bool
-	connectionsMutex         sync.Mutex
+	connections               map[*websocket.Conn]bool
+	connectionsMutex          sync.Mutex
 }
 
 func New(nbaGameID string, timeFactor float64, realStartTime time.Time) *Simulation {
 	return &Simulation{
-		nba_game_id:              nbaGameID,
-		time_factor:              timeFactor,
-		real_start_time:          realStartTime,
+		nba_game_id:               nbaGameID,
+		time_factor:               timeFactor,
+		real_start_time:           realStartTime,
 		simulated_game_clock_time: 0,
-		connections:              make(map[*websocket.Conn]bool),
+		connections:               make(map[*websocket.Conn]bool),
 	}
 }
 
@@ -56,7 +56,7 @@ func (s *Simulation) Run() error {
 	log.Printf("NBA Game ID: %s", s.nba_game_id)
 	log.Printf("Time factor: %f", s.time_factor)
 	log.Printf("Real Start Time: %s", s.real_start_time.Format(time.RFC3339))
-	
+
 	log.Info().Msg("Getting Play-By-Play data from NBA API")
 	resp, err := retrieve.GetPlayByPlayResponse(s.nba_game_id)
 	if err != nil {
@@ -98,7 +98,7 @@ func (s *Simulation) Run() error {
 			log.Printf("Sleep finished s.simulated_game_clock_time=%d", s.simulated_game_clock_time)
 		}
 		log.Info().Msg("*Event Happens*")
-		
+
 		s.sendEventToAllConnections(event)
 	}
 	log.Info().Msg("Game finished")
@@ -133,8 +133,8 @@ func PrepareEvents(resp retrieve.PlayByPlayResponse) []Event {
 		}
 		event := Event{
 			GameClockTime: game_clock_time,
-			ActionType: action.ActionType,
-			Action: action,
+			ActionType:    action.ActionType,
+			Action:        action,
 		}
 		events = append(events, event)
 	}

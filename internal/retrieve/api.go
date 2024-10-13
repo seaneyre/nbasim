@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 	"os"
+	"time"
 
 	"encoding/json"
 	"github.com/rs/zerolog"
