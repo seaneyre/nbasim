@@ -3,12 +3,14 @@ package simulation
 import (
 	_ "fmt"
 	"os"
+	"time"
 
-	"github.com/seaneyre/nbasim/internal/retrieve"
-	"github.com/rs/zerolog"
-    "github.com/rs/zerolog/log"
 	"encoding/json"
 	"strconv"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/seaneyre/nbasim/internal/retrieve"
 )
 
 type Simulation struct {
@@ -24,7 +26,7 @@ func New(nbaGameID string) *Simulation {
 }
 
 func (s *Simulation) Run() error {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.DateTime})
 
 	log.Print("hello world")
 
