@@ -44,8 +44,7 @@ func (s *Server) Run() error {
 	log.Debug().Msg("Running Server")
 
 	r := mux.NewRouter()
-	path := "/ws/game/"
-	r.HandleFunc(path, s.handleWebSocket)
+	r.HandleFunc("/ws/game/{game_id}", s.handleWebSocket)
 
 	addr := fmt.Sprintf("%s:%d", s.host, s.port)
 	log.Info().Str("address", addr).Msg("Starting server")
@@ -53,7 +52,9 @@ func (s *Server) Run() error {
 }
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	log.Debug().Msg("Received WebSocket connection request")
+	vars := mux.Vars(r)
+	gameID := vars["game_id"]
+	log.Debug().Str("game_id", gameID).Msg("Received WebSocket connection request")
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Error upgrading to WebSocket")
