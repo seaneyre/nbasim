@@ -1,13 +1,12 @@
 package simulation
 
 import (
-	"encoding/json"
 	"os"
 	"sort"
-	"sync"
 	"time"
+	"net/url"
 
-	_ "encoding/json"
+	"encoding/json"
 	"strconv"
 
 	"github.com/gorilla/websocket"
@@ -21,8 +20,6 @@ type Simulation struct {
 	time_factor               float64
 	real_start_time           time.Time
 	simulated_game_clock_time int
-	connections               map[*websocket.Conn]bool
-	connectionsMutex          sync.Mutex
 }
 
 func New(nbaGameID string, timeFactor float64, realStartTime time.Time) *Simulation {
@@ -31,40 +28,32 @@ func New(nbaGameID string, timeFactor float64, realStartTime time.Time) *Simulat
 		time_factor:               timeFactor,
 		real_start_time:           realStartTime,
 		simulated_game_clock_time: 0,
-		connections:               make(map[*websocket.Conn]bool),
 	}
 }
 
-func (s *Simulation) AddConnection(conn *websocket.Conn) {
-	s.connectionsMutex.Lock()
-	defer s.connectionsMutex.Unlock()
-	s.connections[conn] = true
-}
-
-func (s *Simulation) RemoveConnection(conn *websocket.Conn) {
-	s.connectionsMutex.Lock()
-	defer s.connectionsMutex.Unlock()
-	delete(s.connections, conn)
+func init() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.DateTime})
 }
 
 func (s *Simulation) Run() error {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.DateTime})
-
-	log.Print("hello world")
-
-	log.Print("Running simulation")
+	log.Print("Running Simulation")
 	log.Printf("NBA Game ID: %s", s.nba_game_id)
 	log.Printf("Time factor: %f", s.time_factor)
 	log.Printf("Real Start Time: %s", s.real_start_time.Format(time.RFC3339))
+
+	serverURL := url.URL{Scheme: "ws", Host: "localhost:8080", Path: "/ws/game/"}
+	conn, _, err := websocket.DefaultDialer.Dial(serverURL.String(), nil)
+	if err != nil {
+		log.Fatal().Msgf("Error connecting to server: %v", err)
+	}
+	defer conn.Close()
+	log.Info().Msgf("Connected to server for game ID: %s", s.nba_game_id)
 
 	log.Info().Msg("Getting Play-By-Play data from NBA API")
 	resp, err := retrieve.GetPlayByPlayResponse(s.nba_game_id)
 	if err != nil {
 		return err
 	}
-
-	// str, _ := json.MarshalIndent(resp.Game.Actions[0], "", "  ")
-	// log.Print(string(str))
 
 	log.Info().Msg("Preparing list of events from Play-By-Play response")
 	events := PrepareEvents(resp)
@@ -98,29 +87,21 @@ func (s *Simulation) Run() error {
 			log.Printf("Sleep finished s.simulated_game_clock_time=%d", s.simulated_game_clock_time)
 		}
 		log.Info().Msg("*Event Happens*")
-
-		s.sendEventToAllConnections(event)
+		SendEvent(event, conn)
 	}
 	log.Info().Msg("Game finished")
 	return nil
 }
 
-func (s *Simulation) sendEventToAllConnections(event Event) {
+func SendEvent(event Event, conn *websocket.Conn) {
 	eventJSON, err := json.Marshal(event)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to marshal event")
 		return
 	}
-
-	s.connectionsMutex.Lock()
-	defer s.connectionsMutex.Unlock()
-
-	for conn := range s.connections {
-		err = conn.WriteMessage(websocket.TextMessage, eventJSON)
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to send message through WebSocket")
-			delete(s.connections, conn)
-		}
+	err = conn.WriteMessage(websocket.TextMessage, eventJSON)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to send message through WebSocket")
 	}
 }
 
