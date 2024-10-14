@@ -1,82 +1,70 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"net/http"
-	"os"
-	"sync"
-	"time"
 	"flag"
+	"os"
+	"time"
+	"fmt"
 
-	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+
+	"github.com/seaneyre/nbasim/internal/server"
 	"github.com/seaneyre/nbasim/internal/simulation"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
+func init() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.DateTime})
 }
 
-var sim *simulation.Simulation
-var simMutex sync.Mutex
+func usage() {
+    intro := `nbasim is a framework to simulate NBA games play-by-play and serve events to a Websocket API.
+
+Usage:
+  nbasim [flags] <command> [command flags]`
+    fmt.Fprintln(os.Stderr, intro)
+
+    fmt.Fprintln(os.Stderr, "\nCommands:")
+    fmt.Fprintln(os.Stderr, "  server\n  simulator")
+
+    fmt.Fprintln(os.Stderr, "\nFlags:")
+    // Prints a help string for each flag
+
+    flag.PrintDefaults()
+
+    fmt.Fprintln(os.Stderr)
+    fmt.Fprintf(os.Stderr, "Run `nbasim <command> -h` to get help for a specific command\n\n")
+}
+
 
 func main() {
-	if err := run(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-}
+	log.Debug().Msg("Starting nbasim")
+	
+	flag.Usage = usage // see below
+    flag.Parse()
 
-func run() error {
-	gameID := flag.String("game-id", "0022000181", "NBA game ID") // Added flag for game ID
-	flag.Parse() // Parse the command-line flags
+	if len(flag.Args()) < 1 {
+		log.Debug().Msg("No cli args specified, printing usage and exit 1")
+        flag.Usage()
+        os.Exit(1)
+    }
 
-	sim = simulation.New(*gameID, 4.00, time.Now().Add(time.Second*2))
+	subCmd := flag.Arg(0)
+    subCmdArgs := flag.Args()[1:]
 
-	go func() {
-		if err := sim.Run(); err != nil {
-			log.Printf("Simulation error: %v", err)
-		}
-	}()
-
-	r := mux.NewRouter()
-	path := "/ws/game/" + *gameID
-	r.HandleFunc(path, handleWebSocket)
-
-	port := "8080"
-	log.Printf("Starting server on port %s", port)
-	return http.ListenAndServe(":"+port, r)
-}
-
-func handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	log.Println("Received WebSocket connection request")
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println("Error upgrading to WebSocket:", err)
-		return
-	}
-	defer conn.Close()
-
-	log.Println("WebSocket connection established")
-
-	simMutex.Lock()
-	sim.AddConnection(conn)
-	simMutex.Unlock()
-
-	for {
-		_, _, err := conn.ReadMessage()
-		if err != nil {
-			log.Println("WebSocket read error:", err)
-			break
-		}
+	switch subCmd {
+	case "server":
+		srv := server.New("localhost", 8080)
+		srv.Run()
+	case "simulate":
+		gameID := "0022000180"
+		sim := simulation.New(gameID, 4.00, time.Now().Add(time.Second*2))
+		sim.Run()
+	default:
+		log.Debug().Msgf("Unknown subcommand provided: %s", subCmd)
+        flag.Usage()
+        os.Exit(1)
 	}
 
-	simMutex.Lock()
-	sim.RemoveConnection(conn)
-	simMutex.Unlock()
+    fmt.Println(subCmd, subCmdArgs)
 }
