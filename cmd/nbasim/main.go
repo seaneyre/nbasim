@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 	"time"
+	"flag"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -32,8 +33,10 @@ func main() {
 }
 
 func run() error {
-	nba_game_id := "0022000180" //TODO: make this a flag which defaults to a random game
-	sim = simulation.New(nba_game_id, 4.00, time.Now().Add(time.Second*2))
+	gameID := flag.String("game-id", "0022000181", "NBA game ID") // Added flag for game ID
+	flag.Parse() // Parse the command-line flags
+
+	sim = simulation.New(*gameID, 4.00, time.Now().Add(time.Second*2))
 
 	go func() {
 		if err := sim.Run(); err != nil {
@@ -42,7 +45,7 @@ func run() error {
 	}()
 
 	r := mux.NewRouter()
-	path := "/ws/game/" + nba_game_id
+	path := "/ws/game/" + *gameID
 	r.HandleFunc(path, handleWebSocket)
 
 	port := "8080"
