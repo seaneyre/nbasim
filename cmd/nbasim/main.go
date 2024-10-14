@@ -39,7 +39,11 @@ Usage:
 func main() {
 	log.Debug().Msg("Starting nbasim")
 
-	flag.Usage = usage // see below
+	flag.Usage = usage
+	serverCmd := flag.NewFlagSet("server", flag.ExitOnError)
+	serverHost := serverCmd.String("host", "localhost", "Host address for the server")
+	serverPort := serverCmd.Int("port", 8080, "Port number for the server")
+
 	flag.Parse()
 
 	if len(flag.Args()) < 1 {
@@ -53,9 +57,11 @@ func main() {
 
 	switch subCmd {
 	case "server":
-		srv := server.New("localhost", 8080)
+		serverCmd.Parse(subCmdArgs)
+		srv := server.New(*serverHost, *serverPort)
 		srv.Run()
 	case "simulate":
+
 		gameID := "0022000180"
 		sim := simulation.New(gameID, 4.00, time.Now().Add(time.Second*2))
 		sim.Run()
