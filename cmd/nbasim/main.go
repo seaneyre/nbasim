@@ -44,6 +44,10 @@ func main() {
 	serverHost := serverCmd.String("host", "localhost", "Host address for the server")
 	serverPort := serverCmd.Int("port", 8080, "Port number for the server")
 
+	simulateCmd := flag.NewFlagSet("simulate", flag.ExitOnError)
+	simulateGameID := simulateCmd.String("game-id", "0022000180", "NBA API Game ID to simulate")
+	simulateTimeFactor := simulateCmd.Float64("time-factor", 4.00, "Time factor to run the simulation at (e.g. if 2 then the simulation will run at 2x the speed of real-time)")
+
 	flag.Parse()
 
 	if len(flag.Args()) < 1 {
@@ -61,9 +65,8 @@ func main() {
 		srv := server.New(*serverHost, *serverPort)
 		srv.Run()
 	case "simulate":
-
-		gameID := "0022000180"
-		sim := simulation.New(gameID, 4.00, time.Now().Add(time.Second*2))
+		simulateCmd.Parse(subCmdArgs)
+		sim := simulation.New(*simulateGameID, *simulateTimeFactor, time.Now().Add(time.Second*2))
 		sim.Run()
 	default:
 		log.Debug().Msgf("Unknown subcommand provided: %s", subCmd)
