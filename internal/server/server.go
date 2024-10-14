@@ -20,7 +20,7 @@ func init() {
 type Server struct {
 	host        string
 	port        int
-	connections map[*websocket.Conn]bool
+	connections map[string]map[*websocket.Conn]bool
 	mutex       sync.Mutex
 }
 
@@ -28,7 +28,7 @@ func New(host string, port int) *Server {
 	return &Server{
 		host:        host,
 		port:        port,
-		connections: make(map[*websocket.Conn]bool),
+		connections: make(map[string]map[*websocket.Conn]bool),
 	}
 }
 
@@ -65,12 +65,15 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	log.Debug().Msg("Adding connection to server connection list")
 	s.mutex.Lock()
-	s.connections[conn] = true
+	if s.connections[gameID] == nil {
+        s.connections[gameID] = make(map[*websocket.Conn]bool)
+    }
+	s.connections[gameID][conn] = true
 	s.mutex.Unlock()
 
 	defer func() {
 		s.mutex.Lock()
-		delete(s.connections, conn)
+		delete(s.connections[gameID], conn)
 		s.mutex.Unlock()
 		conn.Close()
 	}()
@@ -87,20 +90,20 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Info().Msg("Message Received")
 		log.Info().Msg("Broadcasting message")
-		s.Broadcast(messageType, message)
+		s.Broadcast(gameID, messageType, message)
 		log.Debug().Msg("Message broadcast complete")
 	}
 }
 
-func (s *Server) Broadcast(messageType int, message []byte) {
+func (s *Server) Broadcast(gameId string, messageType int, message []byte) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	for conn := range s.connections {
+	for conn := range s.connections[gameId] {
 		err := conn.WriteMessage(messageType, message)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to broadcast message to a client")
-			delete(s.connections, conn)
+			delete(s.connections[gameId], conn)
 			conn.Close()
 		}
 	}
