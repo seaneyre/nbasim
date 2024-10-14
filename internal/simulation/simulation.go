@@ -1,10 +1,10 @@
 package simulation
 
 import (
+	"net/url"
 	"os"
 	"sort"
 	"time"
-	"net/url"
 
 	"encoding/json"
 	"strconv"

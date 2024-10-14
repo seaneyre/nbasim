@@ -18,16 +18,16 @@ func init() {
 }
 
 type Server struct {
-	host string
-	port int
+	host        string
+	port        int
 	connections map[*websocket.Conn]bool
 	mutex       sync.Mutex
 }
 
 func New(host string, port int) *Server {
 	return &Server{
-		host: host,
-		port: port,
+		host:        host,
+		port:        port,
 		connections: make(map[*websocket.Conn]bool),
 	}
 }
@@ -51,8 +51,6 @@ func (s *Server) Run() error {
 	log.Info().Str("address", addr).Msg("Starting server")
 	return http.ListenAndServe(addr, r)
 }
-
-
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msg("Received WebSocket connection request")

@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"time"
-	"fmt"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -18,39 +18,38 @@ func init() {
 }
 
 func usage() {
-    intro := `nbasim is a framework to simulate NBA games play-by-play and serve events to a Websocket API.
+	intro := `nbasim is a framework to simulate NBA games play-by-play and serve events to a Websocket API.
 
 Usage:
   nbasim [flags] <command> [command flags]`
-    fmt.Fprintln(os.Stderr, intro)
+	fmt.Fprintln(os.Stderr, intro)
 
-    fmt.Fprintln(os.Stderr, "\nCommands:")
-    fmt.Fprintln(os.Stderr, "  server\n  simulator")
+	fmt.Fprintln(os.Stderr, "\nCommands:")
+	fmt.Fprintln(os.Stderr, "  server\n  simulator")
 
-    fmt.Fprintln(os.Stderr, "\nFlags:")
-    // Prints a help string for each flag
+	fmt.Fprintln(os.Stderr, "\nFlags:")
+	// Prints a help string for each flag
 
-    flag.PrintDefaults()
+	flag.PrintDefaults()
 
-    fmt.Fprintln(os.Stderr)
-    fmt.Fprintf(os.Stderr, "Run `nbasim <command> -h` to get help for a specific command\n\n")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintf(os.Stderr, "Run `nbasim <command> -h` to get help for a specific command\n\n")
 }
-
 
 func main() {
 	log.Debug().Msg("Starting nbasim")
-	
+
 	flag.Usage = usage // see below
-    flag.Parse()
+	flag.Parse()
 
 	if len(flag.Args()) < 1 {
 		log.Debug().Msg("No cli args specified, printing usage and exit 1")
-        flag.Usage()
-        os.Exit(1)
-    }
+		flag.Usage()
+		os.Exit(1)
+	}
 
 	subCmd := flag.Arg(0)
-    subCmdArgs := flag.Args()[1:]
+	subCmdArgs := flag.Args()[1:]
 
 	switch subCmd {
 	case "server":
@@ -62,9 +61,9 @@ func main() {
 		sim.Run()
 	default:
 		log.Debug().Msgf("Unknown subcommand provided: %s", subCmd)
-        flag.Usage()
-        os.Exit(1)
+		flag.Usage()
+		os.Exit(1)
 	}
 
-    fmt.Println(subCmd, subCmdArgs)
+	fmt.Println(subCmd, subCmdArgs)
 }
