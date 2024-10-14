@@ -3,6 +3,12 @@ Simulate historical or hypothetical NBA matches and output play-by-play events t
 
 ## Quick Start
 
+Build
+
+```
+go build -o nbasim cmd/nbasim
+```
+
 Start a Websocket server
 
 ```
