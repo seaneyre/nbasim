@@ -12,15 +12,15 @@ go build -o nbasim cmd/nbasim
 Start a Websocket server
 
 ```
-./nbasim server --host localhost --port 8080
+./nbasim server --host localhost --port 8000
 ```
 
 Start a simulation
 ```
-./nbasim simulate --game-id 0022000180 --time-factor 4.00
+./nbasim simulate --game-id 0022000180 --time-factor 4.00 --url localhost:8000
 ```
 
 Connect to the Websocket server and watch the game events roll in
 ```
-wscat -c ws:localhost:8080/ws/game/0022000180
+wscat -c ws:localhost:8000/ws/game/0022000180
 ```
