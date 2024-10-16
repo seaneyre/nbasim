@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 	"time"
+	"encoding/json"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -45,10 +46,22 @@ func (s *Server) Run() error {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/ws/game/{game_id}", s.handleWebSocket)
+	r.HandleFunc("/api/status", s.handleServerStatus).Methods("GET")
 
 	addr := fmt.Sprintf("%s:%d", s.host, s.port)
 	log.Info().Str("address", addr).Msg("Starting server")
 	return http.ListenAndServe(addr, r)
+}
+
+func (s *Server) handleServerStatus(w http.ResponseWriter, r *http.Request) {
+	status := map[string]interface{}{
+		"status": "running",
+		"connections_count": len(s.connections),
+		// "simulations_count": len(s.simulations),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(status)
 }
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
