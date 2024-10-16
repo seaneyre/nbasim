@@ -42,9 +42,10 @@ func main() {
 	flag.Usage = usage
 	serverCmd := flag.NewFlagSet("server", flag.ExitOnError)
 	serverHost := serverCmd.String("host", "localhost", "Host address for the server")
-	serverPort := serverCmd.Int("port", 8080, "Port number for the server")
+	serverPort := serverCmd.Int("port", 8000, "Port number for the server")
 
 	simulateCmd := flag.NewFlagSet("simulate", flag.ExitOnError)
+	simulateURL := simulateCmd.String("url", "localhost:8000", "Host URL for the server.")
 	simulateGameID := simulateCmd.String("game-id", "0022000180", "NBA API Game ID to simulate")
 	simulateTimeFactor := simulateCmd.Float64("time-factor", 4.00, "Time factor to run the simulation at (e.g. if 2 then the simulation will run at 2x the speed of real-time)")
 
@@ -66,7 +67,7 @@ func main() {
 		srv.Run()
 	case "simulate":
 		simulateCmd.Parse(subCmdArgs)
-		sim := simulation.New(*simulateGameID, *simulateTimeFactor, time.Now().Add(time.Second*2))
+		sim := simulation.New(*simulateGameID, *simulateTimeFactor, time.Now().Add(time.Second*2), *simulateURL)
 		sim.Run()
 	default:
 		log.Debug().Msgf("Unknown subcommand provided: %s", subCmd)
