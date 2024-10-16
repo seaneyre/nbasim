@@ -43,7 +43,8 @@ func (s *Simulation) Run() error {
 	log.Printf("Time factor: %f", s.time_factor)
 	log.Printf("Real Start Time: %s", s.real_start_time.Format(time.RFC3339))
 
-	serverURL := url.URL{Scheme: "ws", Host: s.host_url, Path: "/ws/game/"+s.nba_game_id}
+	serverURL := url.URL{Scheme: "ws", Host: s.host_url, Path: "/ws/game/"+s.nba_game_id, RawQuery: "type=simulator"}
+	log.Info().Str("server_url", serverURL.String()).Msg("Dialing to Websocket with URL")
 	conn, _, err := websocket.DefaultDialer.Dial(serverURL.String(), nil)
 	if err != nil {
 		log.Fatal().Msgf("Error connecting to server: %v", err)
