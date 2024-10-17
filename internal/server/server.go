@@ -1,12 +1,12 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"sync"
 	"time"
-	"encoding/json"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -19,29 +19,30 @@ func init() {
 }
 
 type ConnectionType int
+
 const (
 	SimulatorConnection ConnectionType = iota
 	ListenerConnection
 )
 
 type Connection struct {
-	conn *websocket.Conn
+	conn     *websocket.Conn
 	connType ConnectionType
 }
 
 type Server struct {
-	host        string
-	port        int
-	listeners map[string]map[*Connection]bool
+	host       string
+	port       int
+	listeners  map[string]map[*Connection]bool
 	simulators map[string]map[*Connection]bool
-	mutex       sync.Mutex
+	mutex      sync.Mutex
 }
 
 func New(host string, port int) *Server {
 	return &Server{
-		host:        host,
-		port:        port,
-		listeners: make(map[string]map[*Connection]bool),
+		host:       host,
+		port:       port,
+		listeners:  make(map[string]map[*Connection]bool),
 		simulators: make(map[string]map[*Connection]bool),
 	}
 }
@@ -59,19 +60,27 @@ func (s *Server) Run() error {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/ws/game/{game_id}", s.handleWebSocket)
-	r.HandleFunc("/api/status", s.handleServerStatus).Methods("GET")
+	r.HandleFunc("/api/status", s.handleAPIStatus).Methods("GET")
 
 	addr := fmt.Sprintf("%s:%d", s.host, s.port)
 	log.Info().Str("address", addr).Msg("Starting server")
 	return http.ListenAndServe(addr, r)
 }
 
-func (s *Server) handleServerStatus(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleAPIStatus(w http.ResponseWriter, r *http.Request) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	simulationGameIDs := make([]string, 0, len(s.simulators))
+	for gameID := range s.simulators {
+		simulationGameIDs = append(simulationGameIDs, gameID)
+	}
 	status := map[string]interface{}{
-		"status": "running",
-		"simulation_count": len(s.simulators),
-		"listener_count": len(s.listeners),
+		"server_status":          "running",
+		"simulation_count":       len(s.simulators),
+		"listener_count":         len(s.listeners),
 		"total_connection_count": len(s.simulators) + len(s.listeners),
+		"simulation_game_ids":    simulationGameIDs,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -82,7 +91,6 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	gameID := vars["game_id"]
 	connType := r.URL.Query().Get("type")
-
 
 	log.Debug().Str("game_id", gameID).Str("type", connType).Msg("Received WebSocket connection request")
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -95,16 +103,16 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	log.Debug().Msg("Parsing connection type")
 	var connectionType ConnectionType
-    switch connType {
-    case "simulator":
-        connectionType = SimulatorConnection
+	switch connType {
+	case "simulator":
+		connectionType = SimulatorConnection
 		log.Debug().Msg("Creating Simulator Connection")
 
 		connection := &Connection{
 			conn:     conn,
 			connType: connectionType,
 		}
-	
+
 		log.Debug().Msg("Adding connection to server simulation list")
 		s.mutex.Lock()
 		if s.simulators[gameID] == nil {
@@ -112,22 +120,22 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 		s.simulators[gameID][connection] = true
 		s.mutex.Unlock()
-	
+
 		defer func() {
 			s.mutex.Lock()
 			delete(s.simulators[gameID], connection)
 			s.mutex.Unlock()
 			conn.Close()
 		}()
-    case "listener":
-        connectionType = ListenerConnection
+	case "listener":
+		connectionType = ListenerConnection
 		log.Debug().Msg("Creating Listener Connection")
 
 		connection := &Connection{
 			conn:     conn,
 			connType: connectionType,
 		}
-	
+
 		log.Debug().Msg("Adding connection to server listener list")
 		s.mutex.Lock()
 		if s.listeners[gameID] == nil {
@@ -135,7 +143,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 		s.listeners[gameID][connection] = true
 		s.mutex.Unlock()
-	
+
 		defer func() {
 			s.mutex.Lock()
 			delete(s.listeners[gameID], connection)
@@ -150,7 +158,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			conn:     conn,
 			connType: connectionType,
 		}
-	
+
 		log.Debug().Msg("Adding connection to server listener list")
 		s.mutex.Lock()
 		if s.listeners[gameID] == nil {
@@ -158,19 +166,18 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 		s.listeners[gameID][connection] = true
 		s.mutex.Unlock()
-	
+
 		defer func() {
 			s.mutex.Lock()
 			delete(s.listeners[gameID], connection)
 			s.mutex.Unlock()
 			conn.Close()
 		}()
-    default:
-        log.Error().Str("type", connType).Msg("Invalid connection type")
-        conn.Close()
-        return
-    }
-
+	default:
+		log.Error().Str("type", connType).Msg("Invalid connection type")
+		conn.Close()
+		return
+	}
 
 	for {
 		messageType, message, err := conn.ReadMessage()
