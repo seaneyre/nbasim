@@ -9,7 +9,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/seaneyre/nbasim/internal/server"
 	"github.com/seaneyre/nbasim/internal/simulation"
 )
 
@@ -25,7 +24,7 @@ Usage:
 	fmt.Fprintln(os.Stderr, intro)
 
 	fmt.Fprintln(os.Stderr, "\nCommands:")
-	fmt.Fprintln(os.Stderr, "  server\n  simulator")
+	fmt.Fprintln(os.Stderr, "  simulate")
 
 	fmt.Fprintln(os.Stderr, "\nFlags:")
 	// Prints a help string for each flag
@@ -61,10 +60,6 @@ func main() {
 	subCmdArgs := flag.Args()[1:]
 
 	switch subCmd {
-	case "server":
-		serverCmd.Parse(subCmdArgs)
-		srv := server.New(*serverHost, *serverPort)
-		srv.Run()
 	case "simulate":
 		simulateCmd.Parse(subCmdArgs)
 		sim := simulation.New(*simulateGameID, *simulateTimeFactor, time.Now().Add(time.Second*2), *simulateURL)
